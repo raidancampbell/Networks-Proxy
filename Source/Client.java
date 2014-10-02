@@ -13,10 +13,11 @@ public class Client {
             BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
             System.out.println("Opened request.");
-            outToServer.writeBytes("hello \n");
-            outToServer.flush();
+            writeData(outToServer);
+            clientSocket.shutdownOutput();
+            //tricky, tricky.  Don't close the output stream.  The close call gets passed to the socket.
             System.out.println("Made request, waiting for response.");
-            System.out.println(inFromServer.readLine());
+            System.out.println("Response: "+inFromServer.readLine());
             clientSocket.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -25,4 +26,12 @@ public class Client {
     }//empty main method to initialize program
 
 
+    private static void writeData(DataOutputStream outToServer) {
+        try {
+            outToServer.writeBytes("hello \n");//the '\n' is necessary
+            outToServer.flush();
+        } catch(Exception e){
+            //todo: fill this if it's still around
+        }
+    }
 }

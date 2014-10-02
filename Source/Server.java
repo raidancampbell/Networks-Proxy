@@ -25,33 +25,53 @@ flush sockets(?)
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-public class Server{
+public class Server {
 
-    public static void main(String[] args){
+    public static void main(String[] args) {
         try {
             ServerSocket welcomeSocket = new ServerSocket(5005);
             System.out.println("Opened welcome socket, waiting for client");
             while (true) {
                 Socket connectionSocket = welcomeSocket.accept();
-                System.out.println("connection accepted");
-                BufferedReader input = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-                System.out.println("Got input. writing output.");
-                DataOutputStream output = new DataOutputStream(connectionSocket.getOutputStream());
-                System.out.println("Got output stream.  Writing to it.");
-
-                output.writeBytes(input.readLine().toUpperCase()+'\n');
-
-                System.out.println("done doing stuff. closing.");
+                String givenData = readInput(connectionSocket);
+                System.out.println("read input successfully");
+                String capitalizedData = givenData.toUpperCase();
+                writeData(connectionSocket,capitalizedData);
                 connectionSocket.close();
             }
-        } catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
         System.out.println("Finished.");
     }//empty main method to initialize program
+
+    private static void writeData(Socket connectionSocket,String data){
+        try {
+            DataOutputStream output = new DataOutputStream(connectionSocket.getOutputStream());
+            output.writeBytes(data.toUpperCase() + '\n');//the '\n' is necessary
+        } catch(IOException e){
+            System.err.println("Error while writing data to client!");
+        }
+    }
+
+    private static String readInput(Socket connectionSocket) {
+        StringBuffer returnVar = new StringBuffer("");
+
+        try {
+            BufferedReader input = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
+            String temp;
+            while ((temp = input.readLine()) != null) {
+                returnVar.append(temp).append('\n');
+            }
+        } catch (IOException e) {
+            System.err.println("Error while reading input from client!");
+        }
+        return returnVar.toString();
+    }
 
 }

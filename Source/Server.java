@@ -44,18 +44,35 @@ public class Server {
                 Socket connectionSocket = welcomeSocket.accept();
                 String givenData = readData(connectionSocket);
                 log(givenData);
+                forwardRequest(givenData);
                 String capitalizedData = givenData.toUpperCase();
                 writeData(connectionSocket,capitalizedData);
                 connectionSocket.close();
+                System.out.println("Serviced request.");
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }//empty main method to initialize program
 
+    private static void forwardRequest(String givenData){
+        String[] lines = givenData.split("\n");
+        Socket clientSocket = new Socket();
+        String host = parseHost(lines); //I may return null
+    }
+
+    public static String parseHost(String[] http){
+        if(http[1].indexOf("Host") == -1){
+            System.err.println("Malformed HTTP request!");
+            return null;
+        }
+        String[] hostLine = http[1].split(":");
+        return hostLine[1].trim();
+    }
+
     private static void log(String text){
         try {
-            PrintWriter writer = new PrintWriter("file.txt", "UTF-8");
+            PrintWriter writer = new PrintWriter("logs/"+System.currentTimeMillis()+".log", "UTF-8");
             String[] lines = text.split("\n");
             for(String s : lines) writer.println(s);
             writer.close();

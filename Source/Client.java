@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
@@ -30,8 +31,8 @@ public class Client {
         try {
             outToServer.writeBytes("hello \n");//the '\n' is necessary
             outToServer.flush();
-        } catch(Exception e){
-            //todo: fill this if it's still around
+        } catch(IOException e){
+            System.err.println("Error while writing data to server!");
         }
     }
 }

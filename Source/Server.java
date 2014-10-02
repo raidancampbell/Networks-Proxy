@@ -21,25 +21,29 @@ send response.
 Ensure there is a connection:close field in the header.  NOT connection:keep-alive
 Use byte buffers because you may be handling binaries
 flush sockets(?)
+
+Tips & Tricks:
+   -DO NOT CLOSE THE DATAOUTPUTSTREAM.  it will close the socket.
+    instead call socket.shutdownOutput
+   -Each dataOutputStream write must end in a '\n'
+   -Close sockets when completely done
+
  */
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 public class Server {
+    public final static int PORT_NUMBER = 5005;
 
     public static void main(String[] args) {
         try {
-            ServerSocket welcomeSocket = new ServerSocket(5005);
-            System.out.println("Opened welcome socket, waiting for client");
+            ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);
             while (true) {
                 Socket connectionSocket = welcomeSocket.accept();
-                String givenData = readInput(connectionSocket);
-                System.out.println("read input successfully");
+                String givenData = readData(connectionSocket);
+                log(givenData);
                 String capitalizedData = givenData.toUpperCase();
                 writeData(connectionSocket,capitalizedData);
                 connectionSocket.close();
@@ -47,8 +51,18 @@ public class Server {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        System.out.println("Finished.");
     }//empty main method to initialize program
+
+    private static void log(String text){
+        try {
+            PrintWriter writer = new PrintWriter("file.txt", "UTF-8");
+            String[] lines = text.split("\n");
+            for(String s : lines) writer.println(s);
+            writer.close();
+        } catch(Exception e){
+            System.err.println("Error on logging request!");
+        }
+    }
 
     private static void writeData(Socket connectionSocket,String data){
         try {
@@ -59,7 +73,7 @@ public class Server {
         }
     }
 
-    private static String readInput(Socket connectionSocket) {
+    private static String readData(Socket connectionSocket) {
         StringBuffer returnVar = new StringBuffer("");
 
         try {

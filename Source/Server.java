@@ -4,6 +4,9 @@ I'm working on port 5005
 Direct TCP connections must be used for HTTP connections
 DNS resolutions can use higher-level stuff
 
+TODO: Sockets are not being opened. the host is not being found. try a different Socket constructor?
+TODO: use bytes instead of strings. Likely will solve previous issue.
+
 look at headers.  There's likely a source/destination header that needs to be changed by the proxy
 Should be able to handle multiple connections
 
@@ -38,8 +41,14 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 
 public class Server {
+
     public final static int PORT_NUMBER = 5005;
 
+    /**
+     * Trying out a pretty linear programming style.
+     * @param args *unused*
+     * Complexity: 1
+     */
     public static void main(String[] args) {
         try {
             ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);
@@ -61,6 +70,11 @@ public class Server {
         }
     }//empty main method to initialize program
 
+    /**
+     * You give me the HTTP request, I send it to the intended destination
+     * @param givenData HTTP request
+     * @return the socket established with the destination address
+     */
     private static Socket forwardRequest(String givenData){
         String[] lines = givenData.split("\n");
         String host = parseHost(lines); //I may return null
@@ -77,6 +91,10 @@ public class Server {
         return null;
     }
 
+    /**
+     * closes the socket, handling if the socket was null
+     * @param s socket to close
+     */
     private static void close(Socket s){
         if(s == null) return;
         try {
@@ -86,6 +104,13 @@ public class Server {
         }
     }
 
+    /**
+     * Grabs the host from the HTTP request
+     * @param http HTTP request as a string
+     * @return the hostname as a string
+     *
+     * Complexity: 2
+     */
     public static String parseHost(String[] http){
         if(http.length < 2) return null;
         if(http[1].indexOf("Host") == -1){
@@ -96,6 +121,10 @@ public class Server {
         return hostLine[1].trim();
     }
 
+    /**
+     * writes the given text to a file.  Useful for debugging.
+     * @param text text to log
+     */
     private static void log(String text){
         try {
             PrintWriter writer = new PrintWriter("logs/"+System.currentTimeMillis()+".log", "UTF-8");
@@ -107,6 +136,11 @@ public class Server {
         }
     }
 
+    /**
+     * writes the given data to the given socket
+     * @param connectionSocket socket to write to
+     * @param data data to write to socket
+     */
     private static void writeToSocket(Socket connectionSocket, String data){
         try {
             DataOutputStream output = new DataOutputStream(connectionSocket.getOutputStream());
@@ -116,6 +150,13 @@ public class Server {
         }
     }
 
+    /**
+     * reads data written to the socket by a remote host
+     * @param connectionSocket socket to read
+     * @return data read from socket
+     *
+     * Complexity: 1
+     */
     private static String readFromSocket(Socket connectionSocket) {
         StringBuilder returnVar = new StringBuilder("");
         try {

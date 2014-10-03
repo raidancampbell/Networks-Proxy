@@ -49,10 +49,10 @@ public class Server {
                 log(givenData);
                 Socket remoteRequest = forwardRequest(givenData); //may be null
                 String response = readFromSocket(remoteRequest);
-                remoteRequest.close();
+                close(remoteRequest);
                 log(response);
                 writeToSocket(clientSocket, response);
-                clientSocket.close();
+                close(clientSocket);
                 System.out.println("Serviced request.");
             }
         } catch (Exception e) {
@@ -75,6 +75,15 @@ public class Server {
             System.err.println("Error: I/O exception while contacting destination server!");
         }
         return null;
+    }
+
+    private static void close(Socket s){
+        if(s == null) return;
+        try {
+            s.close();
+        } catch(IOException e){
+            System.err.println("Error closing socket!");
+        }
     }
 
     public static String parseHost(String[] http){

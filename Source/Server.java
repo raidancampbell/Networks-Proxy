@@ -56,6 +56,7 @@ public class Server {
                 System.out.println("Serviced request.");
             }
         } catch (Exception e) {
+            System.err.println("An uncaught error was encountered!");
             e.printStackTrace();
         }
     }//empty main method to initialize program
@@ -77,6 +78,7 @@ public class Server {
     }
 
     public static String parseHost(String[] http){
+        if(http.length < 2) return null;
         if(http[1].indexOf("Host") == -1){
             System.err.println("Malformed HTTP request!");
             return null;
@@ -119,5 +121,4 @@ public class Server {
         }
         return returnVar.toString();
     }
-
 }

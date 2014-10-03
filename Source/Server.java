@@ -19,6 +19,8 @@ modify response.
 send response.
 
 Ensure there is a connection:close field in the header.  NOT connection:keep-alive
+    -Since the client specified this header, you may need to add a closing statement to your
+    -response, to indicate that the server will not handle keep-alive connections
 Use byte buffers because you may be handling binaries
 flush sockets(?)
 
@@ -33,6 +35,7 @@ Tips & Tricks:
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 
 public class Server {
     public final static int PORT_NUMBER = 5005;
@@ -41,13 +44,15 @@ public class Server {
         try {
             ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);
             while (true) {
-                Socket connectionSocket = welcomeSocket.accept();
-                String givenData = readData(connectionSocket);
+                Socket clientSocket = welcomeSocket.accept();
+                String givenData = readFromSocket(clientSocket);
                 log(givenData);
-                forwardRequest(givenData);
-                String capitalizedData = givenData.toUpperCase();
-                writeData(connectionSocket,capitalizedData);
-                connectionSocket.close();
+                Socket remoteRequest = forwardRequest(givenData); //may be null
+                String response = readFromSocket(remoteRequest);
+                remoteRequest.close();
+                log(response);
+                writeToSocket(clientSocket, response);
+                clientSocket.close();
                 System.out.println("Serviced request.");
             }
         } catch (Exception e) {
@@ -55,10 +60,20 @@ public class Server {
         }
     }//empty main method to initialize program
 
-    private static void forwardRequest(String givenData){
+    private static Socket forwardRequest(String givenData){
         String[] lines = givenData.split("\n");
-        Socket clientSocket = new Socket();
         String host = parseHost(lines); //I may return null
+        try{
+            Socket clientSocket = new Socket(host,80);
+            writeToSocket(clientSocket, givenData);
+            clientSocket.shutdownOutput();
+            return clientSocket;
+        } catch (UnknownHostException e){
+            System.err.println("Error: host '"+host+"' was not found!");
+        } catch (IOException e){
+            System.err.println("Error: I/O exception while contacting destination server!");
+        }
+        return null;
     }
 
     public static String parseHost(String[] http){
@@ -81,7 +96,7 @@ public class Server {
         }
     }
 
-    private static void writeData(Socket connectionSocket,String data){
+    private static void writeToSocket(Socket connectionSocket, String data){
         try {
             DataOutputStream output = new DataOutputStream(connectionSocket.getOutputStream());
             output.writeBytes(data.toUpperCase() + '\n');//the '\n' is necessary
@@ -90,7 +105,7 @@ public class Server {
         }
     }
 
-    private static String readData(Socket connectionSocket) {
+    private static String readFromSocket(Socket connectionSocket) {
         StringBuffer returnVar = new StringBuffer("");
 
         try {

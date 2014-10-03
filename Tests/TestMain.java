@@ -1,9 +1,7 @@
 import junit.framework.TestCase;
-import org.junit.Test;
 
 public class TestMain extends TestCase{
 
-    @Test
     public void testParseHost(){
         String l1 = "GET http://www.reddit.com/r/random HTTP/1.1";
         String l2 = "Host: www.reddit.com";

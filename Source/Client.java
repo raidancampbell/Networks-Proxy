@@ -1,3 +1,10 @@
+/**
+ * deprecated.
+ * Was used for basic testing.
+ * Retained for clarity and future notes.
+ *
+ * It was designed to connect to localhost:5005, send "hello", and receive a request.
+ */
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;

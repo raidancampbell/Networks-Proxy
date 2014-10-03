@@ -108,8 +108,7 @@ public class Server {
     }
 
     private static String readFromSocket(Socket connectionSocket) {
-        StringBuffer returnVar = new StringBuffer("");
-
+        StringBuilder returnVar = new StringBuilder("");
         try {
             BufferedReader input = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
             String temp;
@@ -118,6 +117,8 @@ public class Server {
             }
         } catch (IOException e) {
             System.err.println("Error while reading input from client!");
+        } catch (NullPointerException e){
+            System.err.println("A bad socket was given!");
         }
         return returnVar.toString();
     }

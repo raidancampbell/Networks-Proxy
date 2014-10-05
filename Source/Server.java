@@ -32,10 +32,16 @@ Tips & Tricks:
     instead call socket.shutdownOutput
    -Each dataOutputStream write must end in a '\n'
    -Close sockets when completely done
-
+   -use an InputStream to read byte[], not a bufferedReader
+   -to get a string from byte[] call "String s = new String(byte);
+   -host must be resolved using Inet tools, cannot resolve on the fly by feeding a socket the hostname
  */
 
-import java.io.*;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -54,10 +60,10 @@ public class Server {
             ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);
             while (true) {
                 Socket clientSocket = welcomeSocket.accept();
-                String givenData = readFromSocket(clientSocket);
+                byte[] givenData = readFromSocket(clientSocket);
                 log(givenData);
                 Socket remoteRequest = forwardRequest(givenData); //may be null
-                String response = readFromSocket(remoteRequest);
+                byte[] response = readFromSocket(remoteRequest);
                 close(remoteRequest);
                 log(response);
                 writeToSocket(clientSocket, response);
@@ -75,11 +81,10 @@ public class Server {
      * @param givenData HTTP request
      * @return the socket established with the destination address
      */
-    private static Socket forwardRequest(String givenData){
-        String[] lines = givenData.split("\n");
-        String host = parseHost(lines); //I may return null
+    private static Socket forwardRequest(byte[] givenData){
+        String host = parseHost(givenData); //I may return null
         try{
-            Socket clientSocket = new Socket(host,80);
+            Socket clientSocket = new Socket(InetAddress.getByName(host),80);
             writeToSocket(clientSocket, givenData);
             clientSocket.shutdownOutput();
             return clientSocket;
@@ -106,30 +111,34 @@ public class Server {
 
     /**
      * Grabs the host from the HTTP request
-     * @param http HTTP request as a string
+     * @param request HTTP request as a string
      * @return the hostname as a string
      *
      * Complexity: 2
      */
-    public static String parseHost(String[] http){
-        if(http.length < 2) return null;
-        if(http[1].indexOf("Host") == -1){
+    public static String parseHost(byte[] request){
+        String http = new String(request);
+        if(http.indexOf("Host") < 0) {
             System.err.println("Malformed HTTP request!");
             return null;
         }
-        String[] hostLine = http[1].split(":");
-        return hostLine[1].trim();
+        String returnVar = http.substring(http.indexOf("Host:"));
+        returnVar = returnVar.trim();
+        returnVar = returnVar.substring(returnVar.indexOf(' '),returnVar.indexOf("\n"));
+        returnVar = returnVar.trim();
+        System.out.println(returnVar);
+        return returnVar;
     }
 
     /**
-     * writes the given text to a file.  Useful for debugging.
-     * @param text text to log
+     * writes the given data to a file.  Useful for debugging.
+     * @param data data to log
      */
-    private static void log(String text){
+    private static void log(byte[] data){
         try {
             PrintWriter writer = new PrintWriter("logs/"+System.currentTimeMillis()+".log", "UTF-8");
-            String[] lines = text.split("\n");
-            for(String s : lines) writer.println(s);
+            String text = new String(data);
+            writer.println(text);
             writer.close();
         } catch(Exception e){
             System.err.println("Error on logging request!");
@@ -141,10 +150,10 @@ public class Server {
      * @param connectionSocket socket to write to
      * @param data data to write to socket
      */
-    private static void writeToSocket(Socket connectionSocket, String data){
+    private static void writeToSocket(Socket connectionSocket, byte[] data){
         try {
             DataOutputStream output = new DataOutputStream(connectionSocket.getOutputStream());
-            output.writeBytes(data.toUpperCase() + '\n');//the '\n' is necessary
+            output.write(data);//the may be necessary
         } catch(IOException e){
             System.err.println("Error while writing data to client!");
         }
@@ -157,19 +166,16 @@ public class Server {
      *
      * Complexity: 1
      */
-    private static String readFromSocket(Socket connectionSocket) {
-        StringBuilder returnVar = new StringBuilder("");
+    private static byte[] readFromSocket(Socket connectionSocket) {
+        byte[] returnVar = new byte[0xDEADBEEF];//must be initialized...
         try {
-            BufferedReader input = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-            String temp;
-            while ((temp = input.readLine()) != null) {
-                returnVar.append(temp).append('\n');
-            }
+            InputStreamReader input =new InputStreamReader(connectionSocket.getInputStream());
+            returnVar = org.apache.commons.io.IOUtils.toByteArray(input);
         } catch (IOException e) {
             System.err.println("Error while reading input from client!");
         } catch (NullPointerException e){
             System.err.println("A bad socket was given!");
         }
-        return returnVar.toString();
+        return returnVar;
     }
 }

@@ -3,11 +3,11 @@ import junit.framework.TestCase;
 public class TestMain extends TestCase{
 
     public void testParseHost(){
-        String l1 = "GET http://www.reddit.com/r/random HTTP/1.1";
-        String l2 = "Host: www.reddit.com";
-        String l3 = "Proxy-Connection: keep-alive";
-        String l4 = "Cache-Control: max-age=0";
-        String[] sampleRequest = new String[] {l1,l2,l3,l4};
-        assertTrue(Server.parseHost(sampleRequest).equals("www.reddit.com"));
+        String s = "GET http://www.reddit.com/r/random HTTP/1.1\n";
+        s += "Host: www.reddit.com\n";
+        s += "Proxy-Connection: keep-alive\n";
+        s += "Cache-Control: max-age=0\n";
+        byte[] data = s.getBytes();
+        assertTrue(Server.parseHost(data).equals("www.reddit.com"));
     }
 }

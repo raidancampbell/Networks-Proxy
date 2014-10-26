@@ -10,7 +10,7 @@ public class HeaderEditor {
         Pattern pattern = Pattern.compile("Content-Length:(.)*");
         Matcher matcher = pattern.matcher(header);
         if(!matcher.find()){
-            System.err.println("Malformed HTTP request! No Content-Length specified!");
+            //it was a GET, or non-payload HTTP packet
             return -1;
         }
         String length = matcher.group();
@@ -52,8 +52,7 @@ public class HeaderEditor {
         }
         String returnVar = matcher.group();
         returnVar = returnVar.trim();
-        returnVar = returnVar.replaceFirst("Host:","");
-        returnVar = returnVar.replaceFirst("(.)*www\\.", "www."); //get rid of the 'Host: ' part
+        returnVar = returnVar.replaceFirst("Host: ","");
         returnVar = returnVar.replaceFirst(":(.)*", "");//get rid of the explicit port.
         returnVar = returnVar.trim();
         return returnVar;
@@ -61,7 +60,7 @@ public class HeaderEditor {
 
     public static byte[] convertConnection(byte[] request){
         String returnVar = new String(request);
-        returnVar.replaceFirst("Connection: Keep-Alive","Connection: Close");
+        returnVar = returnVar.replaceFirst("Connection: keep-alive","Connection: close");
         return returnVar.getBytes();
     }
 }

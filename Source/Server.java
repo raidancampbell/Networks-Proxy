@@ -36,10 +36,7 @@ Tips & Tricks:
    -host must be resolved using Inet tools, cannot resolve on the fly by feeding a socket the hostname
  */
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -131,8 +128,8 @@ public class Server {
         System.out.println(matcher.group());
         String returnVar = matcher.group();
         returnVar = returnVar.trim();
-        returnVar = returnVar.replaceFirst("(.)*www\\.","www."); //get rid of the 'Host: ' part
-        returnVar = returnVar.replaceFirst(":(.)*","");//get rid of the explicit port.
+        returnVar = returnVar.replaceFirst("(.)*www\\.", "www."); //get rid of the 'Host: ' part
+        returnVar = returnVar.replaceFirst(":(.)*", "");//get rid of the explicit port.
         returnVar = returnVar.trim();
         System.out.println(returnVar);
         return returnVar;
@@ -175,15 +172,23 @@ public class Server {
      * Complexity: 1
      */
     private static byte[] readFromSocket(Socket connectionSocket) {
-        byte[] returnVar = new byte[0xFF];//must be initialized...
+        //bytes are read, and written to this buffer,
+        //buffer is read at end to return the byte array
+        //this method was chosen for flexible length of byte array
+        ByteArrayOutputStream specialBuffer = new ByteArrayOutputStream();
         try {
-            InputStreamReader input =new InputStreamReader(connectionSocket.getInputStream());
-            returnVar = org.apache.commons.io.IOUtils.toByteArray(input);
+            InputStream is = connectionSocket.getInputStream();
+            byte [] data = new byte[2048];
+            int check = is.read(data, 0, 2048);
+            while(check != -1) {
+                specialBuffer.write(data);
+                check = is.read(data, 0, 2048);
+            }
         } catch (IOException e) {
             System.err.println("Error while reading input from client!");
         } catch (NullPointerException e){
             System.err.println("A bad socket was given!");
         }
-        return returnVar;
+        return specialBuffer.toByteArray();
     }
 }

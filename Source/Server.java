@@ -41,8 +41,6 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class Server {
 
@@ -81,7 +79,7 @@ public class Server {
      * @return the socket established with the destination address
      */
     private static Socket forwardRequest(byte[] givenData){
-        String host = parseHost(givenData); //I may return null
+        String host = HeaderEditor.parseHost(givenData); //I may return null
         try{
             Socket clientSocket = new Socket(InetAddress.getByName(host),80);
             writeToSocket(clientSocket, givenData);
@@ -110,30 +108,8 @@ public class Server {
         }
     }
 
-    /**
-     * Grabs the host from the HTTP request
-     * @param request HTTP request as a string
-     * @return the hostname as a string
-     *
-     * Complexity: 2
-     */
-    public static String parseHost(byte[] request){
-        String httpHeader = new String(request);
-        Pattern pattern = Pattern.compile("Host:(.)*");
-        Matcher matcher = pattern.matcher(httpHeader);
-        if(!matcher.find()){
-            System.err.println("Malformed HTTP request!");
-            return null;
-        }
-        System.out.println(matcher.group());
-        String returnVar = matcher.group();
-        returnVar = returnVar.trim();
-        returnVar = returnVar.replaceFirst("(.)*www\\.", "www."); //get rid of the 'Host: ' part
-        returnVar = returnVar.replaceFirst(":(.)*", "");//get rid of the explicit port.
-        returnVar = returnVar.trim();
-        System.out.println(returnVar);
-        return returnVar;
-    }
+
+
 
     /**
      * writes the given data to a file.  Useful for debugging.
@@ -170,6 +146,9 @@ public class Server {
      * @return data read from socket
      *
      * Complexity: 1
+     *
+     * read the header, and parse the Content-Length field
+     * after the header, read Content-Length more bytes.
      */
     private static byte[] readFromSocket(Socket connectionSocket) {
         //bytes are read, and written to this buffer,
@@ -179,10 +158,22 @@ public class Server {
         try {
             InputStream is = connectionSocket.getInputStream();
             byte [] data = new byte[2048];
-            int check = is.read(data, 0, 2048);
-            while(check != -1) {
+            boolean isHeaderDone = false;
+            int bytesRead = 0;
+            while(!isHeaderDone) {
+                is.read(data, 0, 2048);
                 specialBuffer.write(data);
-                check = is.read(data, 0, 2048);
+                //if the last 4 bytes of data are CRLF/CRLF, then the header is done
+                String finishedChecker = new String(data);
+                if(finishedChecker.contains("\r\n\r\n")) isHeaderDone = true;
+                //reset the bytesRead to be number of bytes after \r\n\r\n
+                bytesRead = finishedChecker.substring(finishedChecker.indexOf("\r\n\r\n")+4).length();
+            }
+            int contentLength = HeaderEditor.parseLength(new String(specialBuffer.toByteArray()));
+            if(contentLength == -1) return  specialBuffer.toByteArray();
+            while(bytesRead < contentLength){
+                bytesRead += is.read(data, 0, 2048);
+                specialBuffer.write(data);
             }
         } catch (IOException e) {
             System.err.println("Error while reading input from client!");

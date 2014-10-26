@@ -59,4 +59,9 @@ public class HeaderEditor {
         return returnVar;
     }
 
+    public static byte[] convertConnection(byte[] request){
+        String returnVar = new String(request);
+        returnVar.replaceFirst("Connection: Keep-Alive","Connection: Close");
+        return returnVar.getBytes();
+    }
 }

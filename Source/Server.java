@@ -44,6 +44,8 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Server {
 
@@ -58,6 +60,7 @@ public class Server {
         try {
             ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);
             while (true) {
+                System.out.println("Ready to service request.");
                 Socket clientSocket = welcomeSocket.accept();
                 byte[] givenData = readFromSocket(clientSocket);
                 log(givenData);
@@ -118,14 +121,18 @@ public class Server {
      * Complexity: 2
      */
     public static String parseHost(byte[] request){
-        String http = new String(request);
-        if(http.indexOf("Host") < 0) {
+        String httpHeader = new String(request);
+        Pattern pattern = Pattern.compile("Host:(.)*");
+        Matcher matcher = pattern.matcher(httpHeader);
+        if(!matcher.find()){
             System.err.println("Malformed HTTP request!");
             return null;
         }
-        String returnVar = http.substring(http.indexOf("Host:"));
+        System.out.println(matcher.group());
+        String returnVar = matcher.group();
         returnVar = returnVar.trim();
-        returnVar = returnVar.substring(returnVar.indexOf(' '),returnVar.indexOf("\n"));
+        returnVar = returnVar.replaceFirst("(.)*www\\.","www."); //get rid of the 'Host: ' part
+        returnVar = returnVar.replaceFirst(":(.)*","");//get rid of the explicit port.
         returnVar = returnVar.trim();
         System.out.println(returnVar);
         return returnVar;

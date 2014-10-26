@@ -4,8 +4,7 @@ I'm working on port 5005
 Direct TCP connections must be used for HTTP connections
 DNS resolutions can use higher-level stuff
 
-TODO: Sockets are not being opened. the host is not being found. try a different Socket constructor?
-TODO: use bytes instead of strings. Likely will solve previous issue.
+TODO: receiving responses (usually).  Don't know what's wrong
 
 look at headers.  There's likely a source/destination header that needs to be changed by the proxy
 Should be able to handle multiple connections
@@ -62,7 +61,7 @@ public class Server {
                 Socket clientSocket = welcomeSocket.accept();
                 byte[] givenData = readFromSocket(clientSocket);
                 log(givenData);
-                Socket remoteRequest = forwardRequest(givenData); //may be null
+                Socket remoteRequest = forwardRequest(givenData);
                 byte[] response = readFromSocket(remoteRequest);
                 close(remoteRequest);
                 log(response);
@@ -92,6 +91,8 @@ public class Server {
             System.err.println("Error: host '"+host+"' was not found!");
         } catch (IOException e){
             System.err.println("Error: I/O exception while contacting destination server!");
+        } catch (NullPointerException e){
+            System.err.println("Error: unable to determine destination host");
         }
         return null;
     }
@@ -153,7 +154,7 @@ public class Server {
     private static void writeToSocket(Socket connectionSocket, byte[] data){
         try {
             DataOutputStream output = new DataOutputStream(connectionSocket.getOutputStream());
-            output.write(data);//the may be necessary
+            output.write(data);
         } catch(IOException e){
             System.err.println("Error while writing data to client!");
         }
@@ -167,7 +168,7 @@ public class Server {
      * Complexity: 1
      */
     private static byte[] readFromSocket(Socket connectionSocket) {
-        byte[] returnVar = new byte[0xDEADBEEF];//must be initialized...
+        byte[] returnVar = new byte[0xFF];//must be initialized...
         try {
             InputStreamReader input =new InputStreamReader(connectionSocket.getInputStream());
             returnVar = org.apache.commons.io.IOUtils.toByteArray(input);

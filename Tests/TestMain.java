@@ -9,5 +9,12 @@ public class TestMain extends TestCase{
         s += "Cache-Control: max-age=0\n";
         byte[] data = s.getBytes();
         assertTrue(Server.parseHost(data).equals("www.reddit.com"));
+
+        s = "GET http://www.reddit.com/r/random HTTP/1.1\n";
+        s += "Host: www.reddit.com:80\n";
+        s += "Proxy-Connection: keep-alive\n";
+        s += "Cache-Control: max-age=0\n";
+        data = s.getBytes();
+        assertTrue(Server.parseHost(data).equals("www.reddit.com"));
     }
 }

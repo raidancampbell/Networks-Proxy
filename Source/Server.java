@@ -58,9 +58,11 @@ public class Server {
                 System.out.println("Ready to service request.");
                 Socket clientSocket = welcomeSocket.accept();
                 byte[] givenData = readFromSocket(clientSocket);
+                givenData = HeaderEditor.convertConnection(givenData);
                 log(givenData);
                 Socket remoteRequest = forwardRequest(givenData);
                 byte[] response = readFromSocket(remoteRequest);
+                HeaderEditor.convertConnection(response);
                 close(remoteRequest);
                 log(response);
                 writeToSocket(clientSocket, response);
@@ -117,12 +119,15 @@ public class Server {
      */
     private static void log(byte[] data){
         try {
+            if(data.length == 0) return;
             PrintWriter writer = new PrintWriter("logs/"+System.currentTimeMillis()+".log", "UTF-8");
             String text = new String(data);
             writer.println(text);
             writer.close();
-        } catch(Exception e){
-            System.err.println("Error on logging request!");
+        } catch(FileNotFoundException e){
+            System.err.println("Error on logging request! File Not Found Exception thrown!");
+        } catch (UnsupportedEncodingException e){
+            System.err.println("Error on logging request! Unsupported Encoding Exception thrown!");
         }
     }
 
@@ -157,17 +162,23 @@ public class Server {
         ByteArrayOutputStream specialBuffer = new ByteArrayOutputStream();
         try {
             InputStream is = connectionSocket.getInputStream();
-            byte [] data = new byte[2048];
+            byte [] data = new byte[4096];
             boolean isHeaderDone = false;
             int bytesRead = 0;
             while(!isHeaderDone) {
-                is.read(data, 0, 2048);
+                is.read(data, 0, 4096);
                 specialBuffer.write(data);
                 //if the last 4 bytes of data are CRLF/CRLF, then the header is done
                 String finishedChecker = new String(data);
+                for(byte b:data){
+                    isHeaderDone = (b == 0x0000);
+                    if(!isHeaderDone) break;
+                }
                 if(finishedChecker.contains("\r\n\r\n")) isHeaderDone = true;
                 //reset the bytesRead to be number of bytes after \r\n\r\n
                 bytesRead = finishedChecker.substring(finishedChecker.indexOf("\r\n\r\n")+4).length();
+
+                //counts unused bytes from read function. bad. TODO: fix it.
             }
             int contentLength = HeaderEditor.parseLength(new String(specialBuffer.toByteArray()));
             if(contentLength == -1) return  specialBuffer.toByteArray();

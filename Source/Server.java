@@ -50,7 +50,7 @@ public class Server{
     public static void main(String[] args) {
         if(args.length>0) PORT_NUMBER = Integer.parseInt(args[0]);
         //TODO: try/catch with NumberFormatException
-
+        System.out.println("Listening on socket "+PORT_NUMBER);
         try {
             ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);
             while (true) {

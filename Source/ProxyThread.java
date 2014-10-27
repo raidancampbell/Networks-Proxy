@@ -5,7 +5,7 @@ import java.net.UnknownHostException;
 
 /*Created by aidan on 10/26/14.
  */
-public class ProxyThread implements Runnable{
+public class ProxyThread extends Thread{
 
     private Socket clientSocket;
 
@@ -131,20 +131,22 @@ public class ProxyThread implements Runnable{
             boolean isComplete = false;
             InputStream socketStream = givenSocket.getInputStream();
             byte[] intermediateCache = new byte[2048];
-            int bytesReadFromSocket;
+            int bytesReadFromSocket = 0;
             ByteArrayOutputStream specialBuffer = new ByteArrayOutputStream();
 
             while(!isComplete){//read the header
                 bytesReadFromSocket = socketStream.read(intermediateCache, 0, 2048);//read from stream, and count amount read
                 if(bytesReadFromSocket < 0) break;//no bytes left in stream. done.
-                specialBuffer.write(bytesReadFromSocket);
+                specialBuffer.write(intermediateCache);
                 if(HeaderEditor.getHeaderEnd(specialBuffer.toByteArray()) != -1) isComplete = true;
+                if(bytesReadFromSocket < 2047) isComplete = true;
             }
             byte[] specialBufferAsBytes = specialBuffer.toByteArray();
             //header was read. now determine payload size
             int contentLength = HeaderEditor.parseLength(new String(specialBuffer.toByteArray()));
             if(contentLength == -1){//no payload. just return header
-                byte[] header = new byte[HeaderEditor.getHeaderEnd(specialBuffer.toByteArray())];
+                if(bytesReadFromSocket < 0) return null;
+                byte[] header = new byte[bytesReadFromSocket];
                 for(int i = 0; i< header.length; i++){
                     header[i] = specialBufferAsBytes[i];
                 }
@@ -153,15 +155,26 @@ public class ProxyThread implements Runnable{
             //we had a payload.  return header + payload many bytes.
             byte[] header = new byte[HeaderEditor.getHeaderEnd(specialBuffer.toByteArray())
                     +HeaderEditor.parseLength(specialBuffer.toByteArray())];
-
+            bytesReadFromSocket = 2048;
+            while(bytesReadFromSocket > 2046) {
+                bytesReadFromSocket = socketStream.read(intermediateCache, 0, 2048);
+                specialBuffer.write(intermediateCache);
+            }
+            specialBufferAsBytes = specialBuffer.toByteArray();
             for(int i = 0; i< header.length; i++){
-                header[i] = specialBufferAsBytes[i];
+                if(i >= specialBufferAsBytes.length){
+                    System.out.println("uh oh");
+                }
+                header[i] = specialBufferAsBytes[i];//TODO: AIOOBE
             }
             return header;
         } catch (IOException e){
 
         } catch (NullPointerException e){
 
+        } catch (ArrayIndexOutOfBoundsException e){
+            System.err.println("array index out of bounds");
+            e.printStackTrace();
         }
         return null;
     }

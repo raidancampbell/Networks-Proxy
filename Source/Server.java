@@ -38,7 +38,7 @@ Tips & Tricks:
 
 import java.net.ServerSocket;
 
-public class Server {
+public class Server{
 
     static int PORT_NUMBER = 5005;
 
@@ -54,9 +54,7 @@ public class Server {
         try {
             ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);
             while (true) {
-                System.out.println("Ready to service request.");
-                new ProxyThread(welcomeSocket.accept()).run();
-                System.out.println("Serviced request.");
+                new ProxyThread(welcomeSocket.accept()).start();
             }
         } catch (Exception e) {
             System.err.println("An uncaught error was encountered!");

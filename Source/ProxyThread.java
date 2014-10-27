@@ -9,7 +9,7 @@ public class ProxyThread implements Runnable{
 
     private Socket clientSocket;
 
-    ProxyThread(Socket givenSocket){
+    public ProxyThread(Socket givenSocket){
      this.clientSocket = givenSocket;
     }
 
@@ -20,18 +20,18 @@ public class ProxyThread implements Runnable{
     @Override
     public void run(){
         try {
-            while (true) {
-                byte[] givenData = readFromSocket(clientSocket);
-                givenData = HeaderEditor.convertConnection(givenData);
-                log(givenData);
-                Socket remoteRequest = forwardRequest(givenData);
-                byte[] response = readFromSocket(remoteRequest);
-                response = HeaderEditor.convertConnection(response);
-                close(remoteRequest);
-                log(response);
-                writeToSocket(clientSocket, response);
-                close(clientSocket);
-            }
+            System.out.println("Thread instantiated.");
+            byte[] givenData = readFromSocket(clientSocket);
+            givenData = HeaderEditor.convertConnection(givenData);
+            log(givenData);
+            Socket remoteRequest = forwardRequest(givenData);
+            byte[] response = readFromSocket(remoteRequest);
+            response = HeaderEditor.convertConnection(response);
+            close(remoteRequest);
+            log(response);
+            writeToSocket(clientSocket, response);
+            close(clientSocket);
+            System.out.println("Serviced request.");
         } catch (Exception e) {
             System.err.println("An uncaught error was encountered!");
             e.printStackTrace();

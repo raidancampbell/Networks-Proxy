@@ -95,6 +95,8 @@ public class ProxyThread implements Runnable{
             System.err.println("Error on logging request! File Not Found Exception thrown!");
         } catch (UnsupportedEncodingException e){
             System.err.println("Error on logging request! Unsupported Encoding Exception thrown!");
+        } catch(NullPointerException e){
+            return;
         }
     }
 
@@ -112,61 +114,57 @@ public class ProxyThread implements Runnable{
             output.write(data);
         } catch(IOException e){
             System.err.println("Error while writing data to client!");
+        } catch(NullPointerException e){
+            return;
         }
     }
 
     /**
-     * reads data written to the socket by a remote host
-     * this method is specially written for HTTP socket specs
-     * @param connectionSocket socket to read
-     * @return data read from socket
-     *
-     * Complexity: 1
-     *
-     * read the header, and parse the Content-Length field
-     * after the header, read Content-Length more bytes.
+     * you gotta read everything, and pay attention to header + content-Length bytes.  toss everything else.
+     * stream can terminate by not writing more bytes, or just writing more null bytes.
+     * @param givenSocket
+     * @return
      */
-    private static byte[] readFromSocket(Socket connectionSocket) {
-        //bytes are read, and written to this buffer,
-        //buffer is read at end to return the byte array
-        //this method was chosen for flexible length of byte array
-        ByteArrayOutputStream specialBuffer = new ByteArrayOutputStream();
-        try {
-            InputStream is = connectionSocket.getInputStream();
-            byte [] data = new byte[4096];
-            boolean isHeaderDone = false;
-            int bytesRead = 0;
-            String finishedChecker = "";
-            while(!isHeaderDone) {
-                is.read(data, 0, 4096);
-                specialBuffer.write(data);
-                //if the last 4 bytes of data are CRLF/CRLF, then the header is done
-                finishedChecker += new String(specialBuffer.toByteArray());
-                for(byte b:data){
-                    isHeaderDone = (b == 0x0000);
-                    if(!isHeaderDone) break;
-                }
-                if(finishedChecker.contains("\r\n\r\n")) isHeaderDone = true;
-                //reset the bytesRead to be number of bytes after \r\n\r\n
-                bytesRead = finishedChecker.substring(finishedChecker.indexOf("\r\n\r\n")+4).length();
+    private static byte[] readFromSocket(Socket givenSocket){
+        //server may only send \n\n, \r\n\n, \n\r\n, or \r\n\r\n
+        try{
+            boolean isComplete = false;
+            InputStream socketStream = givenSocket.getInputStream();
+            byte[] intermediateCache = new byte[2048];
+            int bytesReadFromSocket;
+            ByteArrayOutputStream specialBuffer = new ByteArrayOutputStream();
+
+            while(!isComplete){//read the header
+                bytesReadFromSocket = socketStream.read(intermediateCache, 0, 2048);//read from stream, and count amount read
+                if(bytesReadFromSocket < 0) break;//no bytes left in stream. done.
+                specialBuffer.write(bytesReadFromSocket);
+                if(HeaderEditor.getHeaderEnd(specialBuffer.toByteArray()) != -1) isComplete = true;
             }
+            byte[] specialBufferAsBytes = specialBuffer.toByteArray();
+            //header was read. now determine payload size
             int contentLength = HeaderEditor.parseLength(new String(specialBuffer.toByteArray()));
-            if(contentLength == -1) {
-                return  specialBuffer.toByteArray();
+            if(contentLength == -1){//no payload. just return header
+                byte[] header = new byte[HeaderEditor.getHeaderEnd(specialBuffer.toByteArray())];
+                for(int i = 0; i< header.length; i++){
+                    header[i] = specialBufferAsBytes[i];
+                }
+                return header;
             }
-            while(bytesRead < contentLength){
-                bytesRead += is.read(data, 0, 1);
-                specialBuffer.write(data);
+            //we had a payload.  return header + payload many bytes.
+            byte[] header = new byte[HeaderEditor.getHeaderEnd(specialBuffer.toByteArray())
+                    +HeaderEditor.parseLength(specialBuffer.toByteArray())];
+
+            for(int i = 0; i< header.length; i++){
+                header[i] = specialBufferAsBytes[i];
             }
-        } catch (IOException e) {
-            System.err.println("Error while reading input from client!");
-            e.printStackTrace();
+            return header;
+        } catch (IOException e){
+
         } catch (NullPointerException e){
-            System.err.println("A bad socket was given!");
+
         }
-        String middleRepresentation = new String(specialBuffer.toByteArray());
-        middleRepresentation = middleRepresentation.replace("\u0000", "");//possibly terrible statement
-        return middleRepresentation.getBytes();
+        return null;
     }
+
 }
 

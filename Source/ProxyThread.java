@@ -2,20 +2,22 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 
 /*Created by aidan on 10/26/14.
  */
 public class ProxyThread extends Thread{
 
-    private Socket clientSocket;
+    private static Socket clientSocket;
+    private static InetAddress clientAddr;
 
     public ProxyThread(Socket givenSocket){
-     this.clientSocket = givenSocket;
+     clientSocket = givenSocket;
+     clientAddr = givenSocket.getInetAddress();
     }
 
     /**
      * Trying out a pretty linear programming style.
-     * Complexity: 1
      */
     @Override
     public void run(){
@@ -27,11 +29,11 @@ public class ProxyThread extends Thread{
             Socket remoteRequest = forwardRequest(givenData);
             byte[] response = readFromSocket(remoteRequest);
             response = HeaderEditor.convertConnection(response);
-            close(remoteRequest);
             log(response);
             writeToSocket(clientSocket, response);
-            close(clientSocket);
             System.out.println("Serviced request.");
+            close(clientSocket);
+            close(remoteRequest);
         } catch (Exception e) {
             System.err.println("An uncaught error was encountered!");
             e.printStackTrace();
@@ -54,6 +56,7 @@ public class ProxyThread extends Thread{
             System.err.println("Error: host '"+host+"' was not found!");
         } catch (IOException e){
             System.err.println("Error: I/O exception while contacting destination server!");
+            e.printStackTrace();
         } catch (NullPointerException e){
             System.err.println("Error: unable to determine destination host");
         }
@@ -107,9 +110,9 @@ public class ProxyThread extends Thread{
      */
     private static void writeToSocket(Socket connectionSocket, byte[] data){
         try {
-            boolean isEmpty = true;
-            for(byte b: data)if (b != 0x0000) isEmpty = false;
-            if(isEmpty) return;
+//            boolean isEmpty = true;
+//            for(byte b: data)if (b != 0x0000) isEmpty = false;
+//            if(isEmpty) return;
             DataOutputStream output = new DataOutputStream(connectionSocket.getOutputStream());
             output.write(data);
         } catch(IOException e){
@@ -125,59 +128,23 @@ public class ProxyThread extends Thread{
      * @param givenSocket
      * @return
      */
-    private static byte[] readFromSocket(Socket givenSocket){
-        //server may only send \n\n, \r\n\n, \n\r\n, or \r\n\r\n
-        try{
-            boolean isComplete = false;
-            InputStream socketStream = givenSocket.getInputStream();
-            byte[] intermediateCache = new byte[2048];
-            int bytesReadFromSocket = 0;
-            ByteArrayOutputStream specialBuffer = new ByteArrayOutputStream();
-
-            while(!isComplete){//read the header
-                bytesReadFromSocket = socketStream.read(intermediateCache, 0, 2048);//read from stream, and count amount read
-                if(bytesReadFromSocket < 0) break;//no bytes left in stream. done.
-                specialBuffer.write(intermediateCache);
-                if(HeaderEditor.getHeaderEnd(specialBuffer.toByteArray()) != -1) isComplete = true;
-                if(bytesReadFromSocket < 2047) isComplete = true;
-            }
-            byte[] specialBufferAsBytes = specialBuffer.toByteArray();
-            //header was read. now determine payload size
-            int contentLength = HeaderEditor.parseLength(new String(specialBuffer.toByteArray()));
-            if(contentLength == -1){//no payload. just return header
-                if(bytesReadFromSocket < 0) return null;
-                byte[] header = new byte[bytesReadFromSocket];
-                for(int i = 0; i< header.length; i++){
-                    header[i] = specialBufferAsBytes[i];
+    private static byte[] readFromSocket(Socket givenSocket){			int readVal;
+        ByteBuffer inputBuffer = ByteBuffer.allocate(2048);
+        try {
+            while ((readVal = givenSocket.getInputStream().read()) != -1) {
+                inputBuffer.put((byte) readVal);
+                HeaderEditor headerEditor = new HeaderEditor();
+                if (headerEditor.isHeaderEnded((char) readVal)) {
+                    byte[] data = new byte[inputBuffer.remaining()];
+                    inputBuffer.get(data);
+                    HeaderEditor.addForwardHeader(data, clientAddr.toString());
+                    inputBuffer.clear();
+                    return data;
                 }
-                return header;
             }
-            //we had a payload.  return header + payload many bytes.
-            byte[] header = new byte[HeaderEditor.getHeaderEnd(specialBuffer.toByteArray())
-                    +HeaderEditor.parseLength(specialBuffer.toByteArray())];
-            bytesReadFromSocket = 2048;
-            while(bytesReadFromSocket > 2046) {
-                bytesReadFromSocket = socketStream.read(intermediateCache, 0, 2048);
-                specialBuffer.write(intermediateCache);
-            }
-            specialBufferAsBytes = specialBuffer.toByteArray();
-            for(int i = 0; i< header.length; i++){
-                if(i >= specialBufferAsBytes.length){
-                    System.out.println("uh oh");
-                }
-                header[i] = specialBufferAsBytes[i];//TODO: AIOOBE
-            }
-            return header;
         } catch (IOException e){
-
-        } catch (NullPointerException e){
-
-        } catch (ArrayIndexOutOfBoundsException e){
-            System.err.println("array index out of bounds");
-            e.printStackTrace();
+            System.err.println("I/O exception while reading from socket.");
         }
         return null;
     }
-
 }
-

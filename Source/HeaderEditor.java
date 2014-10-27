@@ -5,7 +5,10 @@ import java.util.regex.Pattern;
  */
 public class HeaderEditor {
 
+    private enum TERMINATION_STAGE {reset,r1,n1,r2}
+
     public static int parseLength(String header){
+        if(header == null) return -1;
         int returnVar = 0;
         Pattern pattern = Pattern.compile("Content-Length:(.)*");
         Matcher matcher = pattern.matcher(header);
@@ -43,6 +46,7 @@ public class HeaderEditor {
      * Complexity: 2
      */
     public static String parseHost(byte[] request){
+        if(request == null) return null;
         String httpHeader = new String(request);
         Pattern pattern = Pattern.compile("Host:(.)*");
         Matcher matcher = pattern.matcher(httpHeader);
@@ -59,8 +63,38 @@ public class HeaderEditor {
     }
 
     public static byte[] convertConnection(byte[] request){
+        if(request == null) return null;
         String returnVar = new String(request);
         returnVar = returnVar.replaceFirst("Connection: keep-alive","Connection: close");
         return returnVar.getBytes();
+    }
+
+    public static int getHeaderEnd(byte[] header){//0x0D0A == \r\n
+        int returnVar = -1;
+        TERMINATION_STAGE termination_stage = TERMINATION_STAGE.reset;
+        for(int i = 0; i< header.length; i++) {//0D0A
+            byte b = header[i];
+            switch (termination_stage){
+                case reset:
+                    if (b == 0x0D) termination_stage = TERMINATION_STAGE.r1;
+                    break;
+                case r1:
+                    if(b == 0x0A) termination_stage = TERMINATION_STAGE.n1;
+                    if(b == 0x0D) termination_stage = TERMINATION_STAGE.r1;
+                    if(b != 0x0D && b != 0x0A) termination_stage = TERMINATION_STAGE.reset;
+                    break;
+                case n1:
+                    if(b == 0x0D) termination_stage = TERMINATION_STAGE.r2;
+                    if(b == 0x0A) termination_stage = TERMINATION_STAGE.r1;
+                    if(b != 0x0D && b != 0x0A) termination_stage = TERMINATION_STAGE.reset;
+                    break;
+                case r2:
+                    if(b == 0x0A) return i;
+                    if(b == 0x0D) termination_stage = TERMINATION_STAGE.r1;
+                    else termination_stage = TERMINATION_STAGE.reset;
+                    break;
+            }
+        }
+        return returnVar;
     }
 }

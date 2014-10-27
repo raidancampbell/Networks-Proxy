@@ -62,7 +62,7 @@ public class Server {
                 log(givenData);
                 Socket remoteRequest = forwardRequest(givenData);
                 byte[] response = readFromSocket(remoteRequest);
-                HeaderEditor.convertConnection(response);
+                response = HeaderEditor.convertConnection(response);
                 close(remoteRequest);
                 log(response);
                 writeToSocket(clientSocket, response);
@@ -120,6 +120,10 @@ public class Server {
     private static void log(byte[] data){
         try {
             if(data.length == 0) return;
+            boolean isEmpty = true;
+            for(byte b: data)if (b != 0x0000) isEmpty = false;
+            if(isEmpty) return;
+
             PrintWriter writer = new PrintWriter("logs/"+System.currentTimeMillis()+".log", "UTF-8");
             String text = new String(data);
             writer.println(text);
@@ -138,6 +142,9 @@ public class Server {
      */
     private static void writeToSocket(Socket connectionSocket, byte[] data){
         try {
+            boolean isEmpty = true;
+            for(byte b: data)if (b != 0x0000) isEmpty = false;
+            if(isEmpty) return;
             DataOutputStream output = new DataOutputStream(connectionSocket.getOutputStream());
             output.write(data);
         } catch(IOException e){
@@ -147,6 +154,7 @@ public class Server {
 
     /**
      * reads data written to the socket by a remote host
+     * this method is specially written for HTTP socket specs
      * @param connectionSocket socket to read
      * @return data read from socket
      *
@@ -165,11 +173,12 @@ public class Server {
             byte [] data = new byte[4096];
             boolean isHeaderDone = false;
             int bytesRead = 0;
+            String finishedChecker = "";
             while(!isHeaderDone) {
                 is.read(data, 0, 4096);
                 specialBuffer.write(data);
                 //if the last 4 bytes of data are CRLF/CRLF, then the header is done
-                String finishedChecker = new String(data);
+                finishedChecker += new String(specialBuffer.toByteArray());
                 for(byte b:data){
                     isHeaderDone = (b == 0x0000);
                     if(!isHeaderDone) break;
@@ -177,20 +186,23 @@ public class Server {
                 if(finishedChecker.contains("\r\n\r\n")) isHeaderDone = true;
                 //reset the bytesRead to be number of bytes after \r\n\r\n
                 bytesRead = finishedChecker.substring(finishedChecker.indexOf("\r\n\r\n")+4).length();
-
-                //counts unused bytes from read function. bad. TODO: fix it.
             }
             int contentLength = HeaderEditor.parseLength(new String(specialBuffer.toByteArray()));
-            if(contentLength == -1) return  specialBuffer.toByteArray();
+            if(contentLength == -1) {
+                return  specialBuffer.toByteArray();
+            }
             while(bytesRead < contentLength){
-                bytesRead += is.read(data, 0, 2048);
+                bytesRead += is.read(data, 0, 1);
                 specialBuffer.write(data);
             }
         } catch (IOException e) {
             System.err.println("Error while reading input from client!");
+            e.printStackTrace();
         } catch (NullPointerException e){
             System.err.println("A bad socket was given!");
         }
-        return specialBuffer.toByteArray();
+        String middleRepresentation = new String(specialBuffer.toByteArray());
+        middleRepresentation = middleRepresentation.replace("\u0000", "");//possibly terrible statement
+        return middleRepresentation.getBytes();
     }
 }

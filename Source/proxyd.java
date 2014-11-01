@@ -38,7 +38,7 @@ Tips & Tricks:
 
 import java.net.ServerSocket;
 
-public class Server{
+public class proxyd {
 
     static int PORT_NUMBER = 5005;
 
@@ -47,8 +47,15 @@ public class Server{
      * Complexity: 1
      */
     public static void main(String[] args) {
-        if(args.length>0) PORT_NUMBER = Integer.parseInt(args[0]);
-        //TODO: try/catch with NumberFormatException
+        try {
+            //simple attempt to parse the port number from the arguments
+            //mostly because I don't feel like setting up the Apache CLI junk
+            if (args.length > 1) PORT_NUMBER = Integer.parseInt(args[1]);
+            if (args.length == 1) PORT_NUMBER = Integer.parseInt(args[0]);
+        } catch(NumberFormatException e){
+            System.err.println("Bad port number, "+args[0]+" was given!\n exiting...");
+            System.exit(1);
+        }
         System.out.println("Listening on socket "+PORT_NUMBER);
         try {
             ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);

@@ -1,0 +1,22 @@
+R. Aidan Campbell
+rac158
+Proxy (project 1)
+
+I'm a 325 student who attempted the 425 bonus of DNS caching.
+possible cache collisions from multithreaded use may lower performance increase, but that's discussed in DNSTable.java
+
+It seems to work to me.  I've been leaving it on while I write the code, and haven't had major issues
+complex sites (like the mentioned cnn.com) work just swimmingly.  Peachy keen, if you will.
+persistent connections are not supported, and are overridden with Connection: close in the header
+
+I've got nice javadocs and stuff, so that should help with readability.
+I may have gone overboard with the number of classes, but I tend to think in a very object-oriented manner
+I tried writing test code, but it's downright difficult and annoying when dealing with sockets, so I gave up.
+
+Invoke it with
+> java proxyd
+    for port 5005 (my assigned port)
+> java proxyd 50025
+    for port 50025
+> java proxyd something_here_is_ignored 50026 everything past here is ignored
+    for port 50026

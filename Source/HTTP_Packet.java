@@ -1,19 +1,17 @@
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
 public class HTTP_Packet {
-    //packet text includes the payload
-    private String packetText;
+    private String headerText;
+    private byte[] payload;
+
 
     /**
-     * Constructor of the HTTP_Packet class that reads a single packetText from
-     * the byte buffer and adds the appropriate header fields for a proxy
-     * application.
-     *
-     * @param byteBuffer - byte buffer containing a single HTTP packetText
-     * @param ipAddress - IP address of the browser's host
+     * constructor
+     * @param byteBuffer buffer containing the header
+     * @param ipAddress Client's address
      */
     public HTTP_Packet(ByteBuffer byteBuffer, String ipAddress) {
         byteBuffer.flip();
@@ -23,19 +21,20 @@ public class HTTP_Packet {
             builder.append((char)nextByte);
         }
         byteBuffer.flip();
-        packetText = builder.toString();
-        packetText = packetText.replaceFirst("Connection: keep-alive","Connection: close");
-        packetText = toggleForwardHeader(packetText, ipAddress);
+        headerText = builder.toString();
+        headerText = headerText.replaceFirst("Connection: keep-alive","Connection: close");
+        headerText = addForwardHeader(ipAddress);
+        payload = new byte[0];
     }
 
+
     /**
-     * Finds the hostname corresponding to the HTTP packetText.
-     *
-     * @return a String containing the headerText of the Host header field
+     * grabs the destination host of the packet
+     * @return the host as a string
      */
     public String parseHost(){
         Pattern pattern = Pattern.compile("Host:(.)*");
-        Matcher matcher = pattern.matcher(packetText);
+        Matcher matcher = pattern.matcher(headerText);
         if(!matcher.find()){
             System.err.println("Malformed HTTP request! No Host specified!");
             return null;
@@ -48,30 +47,42 @@ public class HTTP_Packet {
         return returnVar;
     }
 
+    /**
+     * @return the byte array of the packet
+     */
     public byte[] toByteArray() {
-        return packetText.getBytes();
+        if(!hasPayload()){
+            return headerText.getBytes();
+        }
+        ByteBuffer temp = ByteBuffer.allocate(8192);
+        temp.put(headerText.getBytes());
+        temp.put(payload);
+        byte[] returnVar = new byte[temp.remaining()];
+        temp.get(returnVar, 0, temp.remaining());
+        return returnVar;
     }
 
     @Override
     public String toString() {
-        return packetText;
+        return headerText;
     }
 
+    /**
+     * adds the 'X-Forwarded-For' header
+     * @param clientIP IP being forwarded for
+     * @return the new header with the field added
+     */
+    public String addForwardHeader(String clientIP){
+        if(headerText == null) return null;
+        StringBuffer returnVar = new StringBuffer(headerText);
+        returnVar = new StringBuffer(returnVar.toString().replaceFirst("X-Forwarded-For: ",
+                "X-Forwarded-For: "+clientIP.substring(1)));
 
-    public static String toggleForwardHeader(String request, String clientIP){
-        if(request == null) return null;
-        StringBuffer returnVar = new StringBuffer(request);
-        returnVar = new StringBuffer(returnVar.toString().replaceFirst("X-Forwarded-For: ","X-Forwarded-For: "+clientIP.substring(1)));
         if(!returnVar.toString().contains("X-Forwarded-For: ")){
             int index = 0;
-            while(returnVar.charAt(index) != '\n') {//AOOBE
-                index++;
-                if(index >= returnVar.length()){
-                    //we've got problems
-                }
-            }
+            while(returnVar.charAt(index) != '\n'){ index++;}
             index++;//go just past the CRLF
-            returnVar.insert(index, "X-Forwarded-For: "+clientIP.substring(1)+'\n');
+            returnVar.insert(index, "X-Forwarded-For: "+clientIP.substring(1)+"\r\n");
         } else {
             String temp = returnVar.toString();
             temp = temp.replace("X-Forwarded-For: "+clientIP,"");
@@ -80,4 +91,20 @@ public class HTTP_Packet {
         return returnVar.toString();
     }
 
+    /**
+     * @return whether the packet has a payload
+     */
+    public boolean hasPayload(){
+        return headerText.contains("Content-Length");
+    }
+
+    /**
+     * unimplemented
+     * reads the payload, putting it into the payload[] field
+     * @param inputStream stream to read from
+     */
+    public void readPayload(InputStream inputStream){
+        ByteBuffer temp = ByteBuffer.allocate(8192);
+
+    }
 }

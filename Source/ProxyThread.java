@@ -9,9 +9,11 @@ import java.nio.ByteBuffer;
 public class ProxyThread implements Runnable {
 
     private Socket clientSocket;
+    private DNSTable dnsTable;
 
-    public ProxyThread(Socket givenSocket) {
+    public ProxyThread(Socket givenSocket, DNSTable givenDNSTable) {
         this.clientSocket = givenSocket;
+        this.dnsTable = givenDNSTable;
     }
 
     @Override
@@ -29,7 +31,11 @@ public class ProxyThread implements Runnable {
                 if(ts.isHeaderEnded((char)readVal)) {
                     HTTP_Packet packet = new HTTP_Packet(byteBuffer, clientIP.getHostAddress());
                     byteBuffer.clear();
-                    Socket remoteSocket = new Socket(packet.parseHost(), 80);
+                    if(packet.hasPayload()){
+                        packet.readPayload(input);
+                    }
+                    dnsTable.query(packet.parseHost());
+                    Socket remoteSocket = new Socket(dnsTable.query(packet.parseHost()).address, 80);
                     new Thread(new ResponseThread(clientSocket, remoteSocket)).start();
                     OutputStream output = remoteSocket.getOutputStream();
                     output.write(packet.toByteArray());

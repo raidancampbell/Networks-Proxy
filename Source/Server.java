@@ -53,8 +53,9 @@ public class Server{
         System.out.println("Listening on socket "+PORT_NUMBER);
         try {
             ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);
+            DNSTable dnsTable = new DNSTable();
             while (true) {
-                new Thread(new ProxyThread(welcomeSocket.accept())).start();
+                new Thread(new ProxyThread(welcomeSocket.accept(), dnsTable)).start();
             }
         } catch (Exception e) {
             System.err.println("An uncaught error was encountered!");

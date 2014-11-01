@@ -4,17 +4,23 @@ import java.util.regex.Pattern;
 
 
 public class HTTP_Packet {
-    //packet text includes the payload, header text is only the header
+    //packet text includes the payload
     private String packetText;
 
-    private static final String HOST = "Host";
-    private static final String CONNECTION = "Connection";
-    private static final String FORWARD = "X-Forwarded-For";
+    private enum HTTPHeaderField {
+        HOST("Host"),
+        CONNECTION("Connection"),
+        FORWARD("X-Forwarded-For");
 
-    private String headerText;
+        private String fieldContents;//the contents of this particular field
 
-    public String getHeaderString() {
-        return headerText;
+        HTTPHeaderField(String fieldContents) {
+            this.fieldContents = fieldContents;
+        }
+
+        public String getHeaderString() {
+            return fieldContents;
+        }
     }
 
     /**
@@ -34,8 +40,8 @@ public class HTTP_Packet {
         }
         byteBuffer.flip();
         packetText = builder.toString();
-        addHeaderField(CONNECTION, "closed");
-        addHeaderField(FORWARD, ipAddress);
+        addHeaderField(HTTPHeaderField.CONNECTION, "closed");
+        addHeaderField(HTTPHeaderField.FORWARD, ipAddress);
     }
 
     /**
@@ -44,9 +50,8 @@ public class HTTP_Packet {
      * @return a String containing the headerText of the Host header field
      */
     public String parseHost(){
-        String httpHeader = headerText;
         Pattern pattern = Pattern.compile("Host:(.)*");
-        Matcher matcher = pattern.matcher(httpHeader);
+        Matcher matcher = pattern.matcher(packetText);
         if(!matcher.find()){
             System.err.println("Malformed HTTP request! No Host specified!");
             return null;
@@ -60,9 +65,9 @@ public class HTTP_Packet {
     }
 
     /**
-     * Creates a byte array from the HTTP packetText String.
+     * Creates a byte array from the HTTP request String.
      *
-     * @return a byte array containing HTTP packetText data
+     * @return a byte array containing HTTP request data
      */
     public byte[] toByteArray() {
         return packetText.getBytes();
@@ -74,45 +79,45 @@ public class HTTP_Packet {
     }
 
     /**
-     * Adds a header field  to the HTTP packetText with a specified headerText. If the
-     * header field  is already in use, the headerText is replaced.
+     * Adds a header field to the HTTP request with a specified fieldContents. If the
+     * header field is already in use, the fieldContents is replaced.
      *
-     * @param headerField - the header field
-     * @param value - the headerText corresponding to the headerField
+     * @param field - the header field
+     * @param newFieldValue - the fieldContents corresponding to the header field
      */
-    private void addHeaderField(String headerField, String value) {
-        if(value == null) {
+    private void addHeaderField(HTTPHeaderField field, String newFieldValue) {
+        if(newFieldValue == null) {
             return;
         }
-        // find the start of the headerField field
+        // find the start of the header field
         StringBuilder builder = new StringBuilder();
-        int start = getStartOfHeaderField(headerField);
-        if(start == -1) { // does not contain headerField field
+        int start = getStartOfHeaderField(field);
+        if(start == -1) { // does not contain header field
             start = getNewHeaderFieldIndex();
             builder.append(packetText.substring(0, start));
-            builder.append(getHeaderString()).append(": ").append(value).append("\r\n");
+            builder.append(field.getHeaderString() + ": " + newFieldValue + "\r\n");
             builder.append(packetText.substring(start));
-        } else { // contains headerField field so replace current headerText
-            start += getHeaderString().length() + ": ".length();
-            // find end of headerField field
+        } else { // contains header field so replace current fieldContents
+            start += field.getHeaderString().length() + ": ".length();
+            // find end of header field
             int end = start;
             while(packetText.charAt(end) != '\r') {
                 end++;
             }
             builder.append(packetText.substring(0, start));
-            builder.append(value);
+            builder.append(newFieldValue);
             builder.append(packetText.substring(end));
         }
         packetText = builder.toString();
     }
 
     /**
-     * Removes a header field from the HTTP packetText if it exists.
+     * Removes a header field from the HTTP request if it exists.
      *
-     * @param headerField - the header field to be removed
+     * @param field - the header field to be removed
      */
-    private void removeHeaderField(String headerField) {
-        int start = getStartOfHeaderField(headerField);
+    private void removeHeaderField(HTTPHeaderField field) {
+        int start = getStartOfHeaderField(field);
         if(start != -1) {
             int end = start;
             while(packetText.charAt(end) != '\n') {
@@ -130,7 +135,7 @@ public class HTTP_Packet {
      */
     private int getNewHeaderFieldIndex() {
         // find host header field
-        int index = getStartOfHeaderField(HOST);
+        int index = getStartOfHeaderField(HTTPHeaderField.HOST);
         if(index != -1) {
             // find index of end of line
             while(packetText.charAt(index) != '\n') {
@@ -145,16 +150,16 @@ public class HTTP_Packet {
     }
 
     /**
-     * Finds a header field in the packetText message if it exists.
+     * Finds a header field in the request message if it exists.
      *
-     * @param headerField - the header field to find
+     * @param field - the header field to find
      * @return the starting index of the header field; -1 if the field doesn't
      * exist
      */
-    private int getStartOfHeaderField(String headerField) {
+    private int getStartOfHeaderField(HTTPHeaderField field) {
         int index = 0;
         while(true) {
-            index = packetText.indexOf(getHeaderString(), index);
+            index = packetText.indexOf(field.getHeaderString(), index);
             if(index == -1 || packetText.charAt(index - 1) == '\n') {
                 return index;
             } else {

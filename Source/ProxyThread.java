@@ -37,8 +37,9 @@ public class ProxyThread implements Runnable {
             }
             clientSocket.close();
         } catch (IOException e) {
-            System.err.println("Remote host closed socket.");
+            //too verbose to output this.
+            //System.err.println("Remote host closed socket.");
         }
-        System.out.println("Client served.");
+        System.out.println("Client "+ clientSocket.getInetAddress().toString().substring(1) +" served.");
     }//end of run method
 }//end of class

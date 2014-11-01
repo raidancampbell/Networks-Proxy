@@ -3,8 +3,17 @@ import java.net.UnknownHostException;
 import java.util.Date;
 import java.util.Hashtable;
 
-/**
- * Created by aidan on 11/1/14.
+/*R. Aidan Campbell
+This class is an object meant to be instantiated once, and passed throughout the program
+I haven't noticed any multithreaded issues, and everything still seems to function fine
+
+The object, DNSTable, wraps around a hashmap containing the hostname as a string, and
+another object, DNSEntry as the value
+
+DNSEntry contains the expiration time, and the InetAddress of the given hostname
+
+There may exist an issue where multiple threads access this at once and possibly cause
+duplicate records.  But caching benefits dominate the duplicate query cost.
  */
 public class DNSTable {
 
@@ -28,27 +37,28 @@ public class DNSTable {
     }
 
 
+    /**
+     * helper object to represent the result of a DNS query.
+     */
     public class DNSEntry {
-        Date createdOn;
-        Date expiresOn;
+        Date expirationDate;
         InetAddress address;
-        String hostname;
 
         public DNSEntry(String givenhostname) {
-            createdOn = new Date(System.currentTimeMillis());
-            expiresOn = new Date(System.currentTimeMillis()+30000);//expires 30 seconds after creation
+            expirationDate = new Date(System.currentTimeMillis()+30000);//expires 30 seconds after creation
             try {
-                hostname = givenhostname;
-                address = InetAddress.getByName(hostname);
+                address = InetAddress.getByName(givenhostname);
 
             } catch (UnknownHostException e) {
-                System.err.println("Error! host " + hostname + " not found!");
+                System.err.println("Error! host " + givenhostname + " not found!");
             }
         }
 
+        /**
+         * @return whether the entry is expired (30 seconds have passed)
+         */
         public boolean isExpired(){
-            return new Date(System.currentTimeMillis()).after(expiresOn);
+            return new Date(System.currentTimeMillis()).after(expirationDate);
         }
-
     }//end of DNS entry
 }//end of DNS Table

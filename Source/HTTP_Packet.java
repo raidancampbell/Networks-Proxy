@@ -105,6 +105,5 @@ public class HTTP_Packet {
      */
     public void readPayload(InputStream inputStream){
         ByteBuffer temp = ByteBuffer.allocate(8192);
-
     }
 }

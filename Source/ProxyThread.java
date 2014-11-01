@@ -5,7 +5,10 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 
-
+/**
+ * a single thread to take an input and write it to the requested output
+ * DNS caching is seen around line 40-42 (may change based on comments and stuff)
+ */
 public class ProxyThread implements Runnable {
 
     private Socket clientSocket;
@@ -34,8 +37,9 @@ public class ProxyThread implements Runnable {
                     if(packet.hasPayload()){
                         packet.readPayload(input);
                     }
-                    dnsTable.query(packet.parseHost());
-                    Socket remoteSocket = new Socket(dnsTable.query(packet.parseHost()).address, 80);
+                    dnsTable.query(packet.parseHost());//do an initial query to build the table if necessary.
+                    InetAddress remoteAddress =  dnsTable.query(packet.parseHost()).address;//get the result
+                    Socket remoteSocket = new Socket(remoteAddress, 80);//use the result
                     new Thread(new ResponseThread(clientSocket, remoteSocket)).start();
                     OutputStream output = remoteSocket.getOutputStream();
                     output.write(packet.toByteArray());

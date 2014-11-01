@@ -3,6 +3,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 
+/**
+ * hooks up two sockets and pushes data between them.  Useful for payloads.
+ */
 public class ResponseThread implements Runnable {
 
     private Socket clientSocket;

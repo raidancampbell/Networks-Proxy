@@ -43,7 +43,6 @@ public class Server{
     static int PORT_NUMBER = 5005;
 
     /**
-     * Trying out a pretty linear programming style.
      * @param args used to override the default port of 5005
      * Complexity: 1
      */

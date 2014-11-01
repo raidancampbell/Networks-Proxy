@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 public class HeaderEditor {
 
     private enum TERMINATION_STAGE {reset,r1,n1,r2}
+    private TERMINATION_STAGE termination_stage = TERMINATION_STAGE.reset;
 
     public static int parseLength(String header){
         if(header == null) return -1;
@@ -30,12 +31,6 @@ public class HeaderEditor {
     public static int parseLength(byte[] request){
         String strRequest = new String(request);
         return parseLength(strRequest);
-    }
-
-    public static int parseLength(String[] header){
-        StringBuilder sb = new StringBuilder();
-        for(String s: header)sb.append(s);
-        return parseLength(sb.toString());
     }
 
     /**
@@ -96,5 +91,45 @@ public class HeaderEditor {
             }
         }
         return returnVar;
+    }
+
+    public boolean isHeaderEnded(char c){
+        byte b = (byte) c;
+        switch (termination_stage){
+            case reset:
+                if (b == 0x0D) termination_stage = TERMINATION_STAGE.r1;
+                break;
+            case r1:
+                if(b == 0x0A) termination_stage = TERMINATION_STAGE.n1;
+                if(b == 0x0D) termination_stage = TERMINATION_STAGE.r1;
+                if(b != 0x0D && b != 0x0A) termination_stage = TERMINATION_STAGE.reset;
+                break;
+            case n1:
+                if(b == 0x0D) termination_stage = TERMINATION_STAGE.r2;
+                if(b == 0x0A) termination_stage = TERMINATION_STAGE.r1;
+                if(b != 0x0D && b != 0x0A) termination_stage = TERMINATION_STAGE.reset;
+                break;
+            case r2:
+                if(b == 0x0A) return true;
+                if(b == 0x0D) termination_stage = TERMINATION_STAGE.r1;
+                else termination_stage = TERMINATION_STAGE.reset;
+                break;
+        }
+        return false;
+    }
+
+    public static byte[] addForwardHeader(byte[] request, String clientIP){
+        if(request == null) return null;
+        StringBuffer returnVar = new StringBuffer(new String(request));
+        returnVar = new StringBuffer(returnVar.toString().replaceFirst("X-Forwarded-For: ","X-Forwarded-For: "+clientIP));
+        if(!returnVar.toString().contains("X-Forwarded-For: ")){
+            int index = 0;
+            while(returnVar.charAt(index) != '\n') {//AOOBE
+                index++;
+            }
+            index++;//go just past the CRLF
+            returnVar.insert(index, "X-Forwarded-For: "+clientIP+'\n');
+        }
+        return returnVar.toString().getBytes();
     }
 }

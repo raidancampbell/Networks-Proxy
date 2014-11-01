@@ -44,7 +44,7 @@ public class Server{
 
     /**
      * Trying out a pretty linear programming style.
-     * @param args *unused*
+     * @param args used to override the default port of 5005
      * Complexity: 1
      */
     public static void main(String[] args) {
@@ -54,7 +54,7 @@ public class Server{
         try {
             ServerSocket welcomeSocket = new ServerSocket(PORT_NUMBER);
             while (true) {
-                new ProxyThread(welcomeSocket.accept()).start();
+                new Thread(new ProxyThread(welcomeSocket.accept())).start();
             }
         } catch (Exception e) {
             System.err.println("An uncaught error was encountered!");

@@ -25,6 +25,7 @@ public class ProxyThread extends Thread{
             System.out.println("Thread instantiated.");
             byte[] givenData = readFromSocket(clientSocket);
             givenData = HeaderEditor.convertConnection(givenData);
+            givenData = HeaderEditor.addForwardHeader(givenData, clientAddr.toString());
             log(givenData);
             Socket remoteRequest = forwardRequest(givenData);
             byte[] response = readFromSocket(remoteRequest);
@@ -77,8 +78,6 @@ public class ProxyThread extends Thread{
     }
 
 
-
-
     /**
      * writes the given data to a file.  Useful for debugging.
      * @param data data to log
@@ -110,11 +109,9 @@ public class ProxyThread extends Thread{
      */
     private static void writeToSocket(Socket connectionSocket, byte[] data){
         try {
-//            boolean isEmpty = true;
-//            for(byte b: data)if (b != 0x0000) isEmpty = false;
-//            if(isEmpty) return;
             DataOutputStream output = new DataOutputStream(connectionSocket.getOutputStream());
             output.write(data);
+            output.flush();
         } catch(IOException e){
             System.err.println("Error while writing data to client!");
         } catch(NullPointerException e){
@@ -128,23 +125,38 @@ public class ProxyThread extends Thread{
      * @param givenSocket
      * @return
      */
-    private static byte[] readFromSocket(Socket givenSocket){			int readVal;
+    private static byte[] readFromSocket(Socket givenSocket){
+        if(givenSocket == null) return null;
+        int readVal;
         ByteBuffer inputBuffer = ByteBuffer.allocate(2048);
         try {
-            while ((readVal = givenSocket.getInputStream().read()) != -1) {
+            InputStream socketInputStream = givenSocket.getInputStream();
+            HeaderEditor headerEditor = new HeaderEditor();
+            while ((readVal = socketInputStream.read()) != -1) {
                 inputBuffer.put((byte) readVal);
-                HeaderEditor headerEditor = new HeaderEditor();
                 if (headerEditor.isHeaderEnded((char) readVal)) {
-                    byte[] data = new byte[inputBuffer.remaining()];
-                    inputBuffer.get(data);
-                    HeaderEditor.addForwardHeader(data, clientAddr.toString());
-                    inputBuffer.clear();
+                    //the header has ended.  The payload can be directly channelled now.
+                    byte[] data = readRemainingBuffer(inputBuffer);
                     return data;
                 }
             }
+            byte[] returnVar = new byte[inputBuffer.remaining()];
+            inputBuffer.get(returnVar, 0, returnVar.length);
+            return returnVar;
         } catch (IOException e){
             System.err.println("I/O exception while reading from socket.");
         }
         return null;
+    }
+
+    private static byte[] readRemainingBuffer(ByteBuffer inputBuffer){
+        inputBuffer.flip();
+        StringBuilder builder = new StringBuilder();
+        while(inputBuffer.hasRemaining()) {
+            byte nextByte = inputBuffer.get();
+            builder.append((char)nextByte);
+        }
+        inputBuffer.flip();
+        return builder.toString().getBytes();
     }
 }

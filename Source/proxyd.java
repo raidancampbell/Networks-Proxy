@@ -1,31 +1,4 @@
 /*
-Notes:
-I'm working on port 5005
-Direct TCP connections must be used for HTTP connections
-DNS resolutions can use higher-level stuff
-
-TODO: receiving responses (usually).  Don't know what's wrong
-
-look at headers.  There's likely a source/destination header that needs to be changed by the proxy
-Should be able to handle multiple connections
-
-Use distinct parts:
-get request.
-read request.
-modify request.
-send request.
-
-get response.
-read response.
-modify response.
-send response.
-
-Ensure there is a connection:close field in the header.  NOT connection:keep-alive
-    -Since the client specified this header, you may need to add a closing statement to your
-    -response, to indicate that the server will not handle keep-alive connections
-Use byte buffers because you may be handling binaries
-flush sockets(?)
-
 Tips & Tricks:
    -DO NOT CLOSE THE DATAOUTPUTSTREAM.  it will close the socket.
     instead call socket.shutdownOutput

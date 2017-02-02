@@ -1,7 +1,7 @@
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Date;
-import java.util.Hashtable;
+import java.util.concurrent.ConcurrentHashMap;
 
 /*R. Aidan Campbell
 This class is an object meant to be instantiated once, and passed throughout the program
@@ -17,14 +17,14 @@ duplicate records.  But caching benefits dominate the duplicate query cost.
  */
 public class DNSTable {
 
-    Hashtable<String,DNSEntry> lookupTable;
+    private ConcurrentHashMap<String,DNSEntry> lookupTable;
 
     public DNSTable(){
-        lookupTable = new Hashtable<String, DNSEntry>();
+        lookupTable = new ConcurrentHashMap<String, DNSEntry>();
     }
 
-    public DNSEntry query(String hostname){
-        if(lookupTable.contains(hostname)){
+    DNSEntry query(String hostname){
+        if(lookupTable.containsKey(hostname)){
             //already in table.  Check if it's expired.
             if(lookupTable.get(hostname).isExpired()){
                 lookupTable.remove(hostname);//it's expired. delete the old one and put a new one
@@ -40,11 +40,11 @@ public class DNSTable {
     /**
      * helper object to represent the result of a DNS query.
      */
-    public class DNSEntry {
+    class DNSEntry {
         Date expirationDate;
         InetAddress address;
 
-        public DNSEntry(String givenhostname) {
+        DNSEntry(String givenhostname) {
             expirationDate = new Date(System.currentTimeMillis()+30000);//expires 30 seconds after creation
             try {
                 address = InetAddress.getByName(givenhostname);
@@ -57,7 +57,7 @@ public class DNSTable {
         /**
          * @return whether the entry is expired (30 seconds have passed)
          */
-        public boolean isExpired(){
+        boolean isExpired(){
             return new Date(System.currentTimeMillis()).after(expirationDate);
         }
     }//end of DNS entry
